@@ -257,6 +257,20 @@ var ProviderFeatures = map[schemas.ModelProvider]ProviderFeatureSupport{
 		// FastMode, InferenceGeo, AdvisorTool, TaskBudgets — not documented on Az-platform; leave off.
 		ServiceTier: true,
 	},
+	schemas.DeepSeek: {
+		WebSearch: true, WebSearchDynamic: true,
+		// Server tools other than web_search error are leaved false (WebFetch,
+		// CodeExecution, ComputerUse, Bash, Memory, TextEditor, ToolSearch, MCP,
+		// AdvisorTool, FilesAPI, FileSearch, ImageGeneration).
+		ContainerBasic: true, Skills: true,
+		ContextManagementField: true, Compaction: true, ContextEditing: true,
+		PromptCachingScope: true,
+		AdvancedToolUse:    true, InputExamples: true, EagerInputStreaming: true,
+		StructuredOutputs:   true,
+		InterleavedThinking: true,
+		ServiceTier:         true, FastMode: true, InferenceGeo: true, TaskBudgets: true,
+		Diagnostics: true,
+	},
 }
 
 // ==================== REQUEST TYPES ====================
