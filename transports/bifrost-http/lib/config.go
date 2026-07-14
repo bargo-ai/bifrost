@@ -483,6 +483,10 @@ type Config struct {
 
 	configPath string
 
+	// vkPruneProtector, when set via WithVirtualKeyPruneProtector, returns the
+	// virtual key IDs that config.json source-of-truth pruning must never delete
+	vkPruneProtector VirtualKeyPruneProtector
+
 	// Stores
 	ConfigStore configstore.ConfigStore
 	VectorStore vectorstore.VectorStore
@@ -771,15 +775,16 @@ func registerFeatureFlags(_ context.Context) error {
 //   - Case conversion for provider names (e.g., "OpenAI" -> "openai")
 //   - In-memory storage for ultra-fast access during request processing
 //   - Graceful handling of missing config files
-func LoadConfig(ctx context.Context, configDirPath string) (*Config, error) {
+func LoadConfig(ctx context.Context, configDirPath string, vkPruneProtector VirtualKeyPruneProtector) (*Config, error) {
 	configFilePath := filepath.Join(configDirPath, "config.json")
 	configDBPath := filepath.Join(configDirPath, "config.db")
 	logsDBPath := filepath.Join(configDirPath, "logs.db")
 	// Initialize config
 	config := &Config{
-		configPath: configFilePath,
-		Providers:  make(map[schemas.ModelProvider]configstore.ProviderConfig),
-		LLMPlugins: atomic.Pointer[[]schemas.LLMPlugin]{},
+		configPath:       configFilePath,
+		Providers:        make(map[schemas.ModelProvider]configstore.ProviderConfig),
+		LLMPlugins:       atomic.Pointer[[]schemas.LLMPlugin]{},
+		vkPruneProtector: vkPruneProtector,
 	}
 	// Register feature flags before any file/DB-driven init so the
 	// registry is populated even when config.json is absent. initFeatureFlags
@@ -2601,6 +2606,14 @@ func mergeComplexityAnalyzerConfigFromFile(current, fileConfig *configstore.Comp
 	return configstore.MergeComplexityAnalyzerConfigByHashes(base, fileConfig)
 }
 
+// VirtualKeyPruneProtector returns the set of virtual key IDs that config.json
+// source-of-truth pruning must never delete — e.g. the per-user keys minted by
+// enterprise access profiles, which can never appear in config.json and would
+// otherwise be wiped on every restart. Enterprise builds pass one to LoadConfig
+// so the OSS prune can honor runtime-managed keys without OSS depending on
+// enterprise schema.
+type VirtualKeyPruneProtector func(ctx context.Context, store configstore.ConfigStore) (map[string]bool, error)
+
 // pruneGovernanceConfigToFile removes DB-only governance rows for file-present collections.
 func pruneGovernanceConfigToFile(ctx context.Context, config *Config, configData *ConfigData) {
 	if config.ConfigStore == nil || config.GovernanceConfig == nil || configData.Governance == nil {
@@ -2609,6 +2622,17 @@ func pruneGovernanceConfigToFile(ctx context.Context, config *Config, configData
 	logger.Debug("source_of_truth=config.json: pruning governance rows not present in config file")
 	err := config.ConfigStore.ExecuteTransaction(ctx, func(tx *gorm.DB) error {
 		if configData.governanceSectionPresent("virtual_keys") {
+			// Resolve VKs that must survive pruning even though they are absent
+			// from config.json — currently the per-user keys minted by enterprise
+			// access profiles. Without this, every restart deletes them.
+			var protectedVKIDs map[string]bool
+			if config.vkPruneProtector != nil {
+				ids, protErr := config.vkPruneProtector(ctx, config.ConfigStore)
+				if protErr != nil {
+					return fmt.Errorf("failed to resolve prune-protected virtual keys: %w", protErr)
+				}
+				protectedVKIDs = ids
+			}
 			keep := make(map[string]bool, len(configData.Governance.VirtualKeys))
 			for i := range configData.Governance.VirtualKeys {
 				vk := &configData.Governance.VirtualKeys[i]
@@ -2623,10 +2647,11 @@ func pruneGovernanceConfigToFile(ctx context.Context, config *Config, configData
 				}
 			}
 			for _, existing := range config.GovernanceConfig.VirtualKeys {
-				if existing.ID != "" && !keep[existing.ID] {
-					if err := config.ConfigStore.DeleteVirtualKey(ctx, existing.ID, tx); err != nil {
-						return fmt.Errorf("failed to delete virtual key %s: %w", existing.ID, err)
-					}
+				if existing.ID == "" || keep[existing.ID] || protectedVKIDs[existing.ID] {
+					continue
+				}
+				if err := config.ConfigStore.DeleteVirtualKey(ctx, existing.ID, tx); err != nil {
+					return fmt.Errorf("failed to delete virtual key %s: %w", existing.ID, err)
 				}
 			}
 			config.GovernanceConfig.VirtualKeys = configData.Governance.VirtualKeys
