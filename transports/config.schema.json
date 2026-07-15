@@ -5502,6 +5502,13 @@
                 "default": "bundled",
                 "description": "How the rule's turns are sent to its guardrail providers. 'bundled' (default) concatenates all turns into one guardrail call. 'per_turn' sends each turn in its own call, evaluated in isolation, to avoid context-sensitive classifiers (e.g. Bedrock prompt-attack) combining unrelated turns into a false-positive block; this scans every turn but uses more provider calls."
               },
+              "stream_replay_duration_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60000,
+                "default": 200,
+                "description": "Total duration in milliseconds for replaying buffered events after block-capable streaming output guardrails allow the response. 0 sends the buffered events immediately."
+              },
               "provider_config_ids": {
                 "type": "array",
                 "items": {

@@ -8,6 +8,10 @@ Official Helm charts for deploying [Bifrost](https://github.com/maximhq/bifrost)
 
 ## Changelog
 
+### Upcoming
+
+- Added `bifrost.guardrails.rules[].stream_replay_duration_ms` to configure the total replay duration for allowed streams buffered by block-capable output guardrails 
+
 ### 2.1.28
 
 - Restored `runAsUser: 1000` defaults in `podSecurityContext` and `securityContext` (dropped in 2.1.27). Images before v1.6.4 use a non-numeric `USER appuser`, so kubelet could not verify `runAsNonRoot: true` and pods failed with CreateContainerConfigError. OpenShift (restricted-v2) users unset the pins with explicit nulls: `podSecurityContext.runAsUser: null`, `podSecurityContext.fsGroup: null`, `securityContext.runAsUser: null`.

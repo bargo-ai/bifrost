@@ -1025,6 +1025,7 @@ bifrost:
       #   timeout: 60        # Timeout in seconds for rule execution (default: 60)
       #   max_turns_to_send: 0
       #   evaluation_mode: "bundled"   # "bundled" (default) | "per_turn" (each turn scanned in isolation; avoids cross-turn false positives, more provider calls)
+      #   stream_replay_duration_ms: 200  # Total time to replay an allowed buffered stream; 0 sends it immediately
     providers: []
       # - id: 1
       #   provider_name: "bedrock"
