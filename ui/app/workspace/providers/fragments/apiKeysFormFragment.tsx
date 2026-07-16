@@ -764,6 +764,25 @@ export function ApiKeyFormFragment({ control, providerName, baseProviderType, fo
 							</FormItem>
 						)}
 					/>
+					{isSGL && (
+						<FormField
+							control={control}
+							name="key.use_anthropic_endpoints"
+							render={({ field }) => (
+								<FormItem className="flex flex-row items-center justify-between rounded-sm border p-2">
+									<div className="space-y-1.5">
+										<FormLabel>Use Anthropic Endpoints</FormLabel>
+										<FormDescription>
+											Routes Inference (text, chat completions, and responses) requests through SGLang&apos;s Anthropic-compatible endpoints.
+										</FormDescription>
+									</div>
+									<FormControl>
+										<Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+									</FormControl>
+								</FormItem>
+							)}
+						/>
+					)}
 				</div>
 			)}
 			{isBedrock && (

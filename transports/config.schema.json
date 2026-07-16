@@ -3674,6 +3674,10 @@
                   "use_deployments_endpoint": {
                     "type": "boolean",
                     "description": "Replicate: use the deployments endpoint instead of the predictions endpoint for this alias."
+                  },
+                  "use_anthropic_endpoints": {
+                    "type": "boolean",
+                    "description": "Routes Inference through SGLang's Anthropic-compatible endpoints instead of its OpenAI-compatible ones (default: false)."
                   }
                 },
                 "required": ["model_id"],
@@ -3928,6 +3932,11 @@
               },
               "required": ["url"],
               "additionalProperties": false
+            },
+            "use_anthropic_endpoints": {
+              "type": "boolean",
+              "description": "Routes Inference through SGLang's Anthropic-compatible endpoints instead of its OpenAI-compatible ones (default: false).",
+              "default": false
             }
           },
           "required": ["sgl_key_config"]
